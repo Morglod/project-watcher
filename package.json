@@ -1,0 +1,35 @@
+{
+  "name": "project-watch",
+  "version": "0.0.1",
+  "description": "Watch on project structure",
+  "types": "lib/index.d.ts",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+  },
+  "keywords": [
+    "watch",
+    "project",
+    "structure",
+    "build",
+    "tools",
+    "fast",
+    "templates",
+    "template",
+    "chokidar",
+    "automation",
+    "auto",
+    "script",
+    "scripts"
+  ],
+  "author": "morglod",
+  "license": "MIT",
+  "dependencies": {
+    "@types/chokidar": "^1.7.5",
+    "@types/minimatch": "^3.0.3",
+    "@types/node": "^9.4.7",
+    "chokidar": "^2.0.2",
+    "minimatch": "^3.0.4",
+    "typescript": "^2.7.2"
+  }
+}
