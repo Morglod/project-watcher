@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as minimatch from 'minimatch';
-import { basename, join as joinPath } from 'path';
+import { dirname, join as joinPath, resolve as resolvePath } from 'path';
 
+import { isDebug } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, EventNames, WatcherOptions } from './watcher';
 
 export type ProjectWatcherPathOptions = WatcherEvents & {
@@ -63,17 +64,23 @@ export class ProjectWatcher {
     readonly watcher: Watcher;
     readonly paths: { rule: minimatch.IMinimatch, opts: ProjectWatcherPathOptions }[];
 
-    constructor(path: string | string[], opts: ProjectWatcherOptions) {
+    constructor(rootPath: string | string[], opts: ProjectWatcherOptions) {
         this.paths = Object.entries(opts.paths).map(([ ruleStr, pathOpts ]) => ({
             rule: new minimatch.Minimatch(ruleStr),
             opts: pathOpts
         }));
-        this.watcher = new Watcher(path, opts.watcher);
+
+        rootPath = Array.isArray(rootPath) ? rootPath : [ rootPath ];
+        rootPath = rootPath.map(x => resolvePath(x).replace(/\\/g, '/'));
+        this.watcher = new Watcher(rootPath, opts.watcher);
 
         [ 'newDir', 'renameDir', 'removeDir', 'newFile', 'renameFile', 'removeFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
+                path = normalizePath(rootPath as string[], path);
                 this.paths.forEach(({ rule, opts }) => {
+                    if (isDebug) console.log(`[${event}] try match '${path}' with ${rule.pattern}`);
                     if (rule.match(path)) {
+                        if (isDebug) console.log(`[${event}] matched '${path}' with ${rule.pattern}`);
                         if (opts.autoIndex) updateIndexFile(path, opts);
                     }
                 });
@@ -82,10 +89,13 @@ export class ProjectWatcher {
 
         [ 'newDir', 'newFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
+                path = normalizePath(rootPath as string[], path);
                 this.paths.forEach(({ rule, opts }) => {
+                    if (isDebug) console.log(`[${event}] try match '${path}' with ${rule.pattern}`);
                     if (rule.match(path)) {
-                        if (opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
-                        if (opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
+                        if (isDebug) console.log(`[${event}] matched '${path}' with ${rule.pattern}`);
+                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
+                        if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
                     }
                 });
             });
@@ -93,8 +103,11 @@ export class ProjectWatcher {
 
         EventNames.forEach(eventName => {
             this.watcher.on(eventName, (path: string, ...args: any[]) => {
+                path = normalizePath(rootPath as string[], path);
                 this.paths.forEach(({ rule, opts }) => {
+                    if (isDebug) console.log(`[${eventName}] try match '${path}' with ${rule.pattern}`);
                     if (opts[eventName] && rule.match(path)) {
+                        if (isDebug) console.log(`[${eventName}] matched '${path}' with ${rule.pattern}`);
                         (opts[eventName] as Function)(path, ...args);
                     }
                 });
@@ -110,7 +123,7 @@ export class ProjectWatcher {
 export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     // TODO: if file exists & no 'auto generated' comment
 
-    const parent = basename(path);
+    const parent = dirname(path);
     const ext = opts.autoIndex === 'ts' ? '.ts' : '.js';
     const parentIndex = joinPath(parent, './index' + ext);
     if (!fs.existsSync(parentIndex) && opts.dontCreateIndex) return; 
@@ -135,9 +148,18 @@ export function copyDir(dst: string, from: string) {
 }
 
 export function copyFileTemplate(dst: string, from: string) {
-    fs.copyFileSync(dst, from);
+    fs.copyFileSync(from, dst);
 }
 
 export function copyFile(dst: string, from: string) {
     fs.writeFileSync(dst, fs.readFileSync(from));
+}
+
+export function normalizePath(normalizedRootPaths: string[], path: string): string {
+    path = path.replace(/\\/g, '/').replace(/^\.\//, '');
+    if (isDebug) console.log(`normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
+    const rootPath = normalizedRootPaths.find(x => path.startsWith(x));
+    if (!rootPath) return path;
+    if (isDebug) console.log(`normalizePath ${rootPath} ${path}`);
+    return path.substr(rootPath.length + 1);
 }

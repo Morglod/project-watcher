@@ -17,6 +17,7 @@ export declare const EventNames: Events[];
 export declare type WatcherOptions = chokidar.WatchOptions;
 export declare class Watcher extends EventEmitter<EventMap> {
     readonly watcher: chokidar.FSWatcher;
+    eventTimeoutMS: number;
     renameDirTimeoutMS: number;
     renameFileTimeoutMS: number;
     setupIterationTimeoutMS: number;

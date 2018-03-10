@@ -58,7 +58,7 @@ export declare class ProjectWatcher {
         rule: minimatch.IMinimatch;
         opts: ProjectWatcherPathOptions;
     }[];
-    constructor(path: string | string[], opts: ProjectWatcherOptions);
+    constructor(rootPath: string | string[], opts: ProjectWatcherOptions);
     close: () => void;
 }
 export declare function updateIndexFile(path: string, opts: ProjectWatcherPathOptions): void;
@@ -66,3 +66,4 @@ export declare function copyDirTemplate(dst: string, from: string): void;
 export declare function copyDir(dst: string, from: string): void;
 export declare function copyFileTemplate(dst: string, from: string): void;
 export declare function copyFile(dst: string, from: string): void;
+export declare function normalizePath(normalizedRootPaths: string[], path: string): string;

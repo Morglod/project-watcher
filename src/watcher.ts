@@ -36,6 +36,7 @@ export type WatcherOptions = chokidar.WatchOptions;
 export class Watcher extends EventEmitter<EventMap> {
     readonly watcher: chokidar.FSWatcher;
 
+    eventTimeoutMS: number = 50;
     renameDirTimeoutMS: number = 50;
     renameFileTimeoutMS: number = 50;
     setupIterationTimeoutMS: number = 100;
@@ -61,84 +62,88 @@ export class Watcher extends EventEmitter<EventMap> {
     }
 
     private handleNewDir = async (path: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleNewDir');
-        await this.emit('newDir', path);
+        await this.emitWait(this.eventTimeoutMS, 'newDir', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleDirRename = async (oldPath: string, newPath: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleDirRename');
-        await this.emit('renameDir', oldPath, newPath);
+        await this.emitWait(this.eventTimeoutMS, 'renameDir', oldPath, newPath);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleRemoveDir = async (path: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleRemoveDir');
-        await this.emit('removeDir', path);
+        await this.emitWait(this.eventTimeoutMS, 'removeDir', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleUnlinkDir = async (unlinkPath: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleUnlinkDir');
-        this.watcher.once('addDir', (newPath: string) => {
+        this.watcher.addListener('addDir', (newPath: string) => {
             clearTimeout(timer);
             this.handleDirRename(unlinkPath, newPath);
         });
 
         const timer = setTimeout(() => {
-            this.watcher.removeAllListeners();
+            this.stopListening();
             this.handleRemoveDir(unlinkPath);
         }, this.renameDirTimeoutMS);
     }
 
     private handleFileChange = async (path: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleFileChange');
-        await this.emit('changeFile', path);
+        await this.emitWait(this.eventTimeoutMS, 'changeFile', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleFileRename = async (oldPath: string, newPath: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('renameFile');
-        await this.emit('renameFile', oldPath, newPath);
+        await this.emitWait(this.eventTimeoutMS, 'renameFile', oldPath, newPath);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
     
     private handleNewFile = (addPath: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleNewFile');
-        this.watcher.once('unlink', (oldPath) => {
+        this.watcher.addListener('unlink', (oldPath) => {
             clearTimeout(timer);
             this.handleFileRename(oldPath, addPath);
         });
     
         const timer = setTimeout(async () => {
             if (this.debugLog) this._debugLog('emit newFile, cancel handleFileRename');
-            this.watcher.removeAllListeners();
-            await this.emit('newFile', addPath);
+            this.stopListening();
+            await this.emitWait(this.eventTimeoutMS, 'newFile', addPath);
             setTimeout(this.listen, this.setupIterationTimeoutMS);
         }, this.renameFileTimeoutMS);
     }
 
     private handleFileRemove = async (path: string) => {
+        this.stopListening();
         if (this.debugLog) this._debugLog('handleFileRemove');
-        await this.emit('removeFile', path);
+        await this.emitWait(this.eventTimeoutMS, 'removeFile', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private listen = () => {
         if (this.debugLog) this._debugLog('setup');
         this.stopListening();
-        this.watcher.once('addDir', this.handleNewDir);
-        this.watcher.once('change', this.handleFileChange);
-        this.watcher.once('add', this.handleNewFile);
-        this.watcher.once('unlinkDir', this.handleUnlinkDir);
-        this.watcher.once('unlink', this.handleFileRemove);
+        this.watcher.addListener('addDir', this.handleNewDir);
+        this.watcher.addListener('change', this.handleFileChange);
+        this.watcher.addListener('add', this.handleNewFile);
+        this.watcher.addListener('unlinkDir', this.handleUnlinkDir);
+        this.watcher.addListener('unlink', this.handleFileRemove);
     }
 
     private stopListening = () => {
-        this.watcher.removeListener('addDir', this.handleNewDir);
-        this.watcher.removeListener('change', this.handleNewDir);
-        this.watcher.removeListener('add', this.handleNewDir);
-        this.watcher.removeListener('unlinkDir', this.handleNewDir);
-        this.watcher.removeListener('unlink', this.handleNewDir);
+        this.watcher.removeAllListeners();
     }
 }

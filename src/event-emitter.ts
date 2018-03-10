@@ -8,9 +8,19 @@ export type DefaultEventMap = { [event: string]: Listener };
 export class EventEmitter<EventMap extends DefaultEventMap = DefaultEventMap> {
     readonly emitter = new events.EventEmitter;
 
-    async emit<EventKey extends keyof EventMap = string>(event: EventKey, ...args: any[]) {
+    emit<EventKey extends keyof EventMap = string>(event: EventKey, ...args: any[]) {
         if (isDebug) console.log('emit', event, args);
-        await Promise.all(this.emitter.listeners(event));
+        this.emitter.emit(event, ...args);
+    }
+
+    async emitWait<EventKey extends keyof EventMap = string>(timeout: number, event: EventKey, ...args: any[]) {
+        if (isDebug) console.log('emit', timeout, event, args);
+        return new Promise(resolve => {
+            setTimeout(async () => {
+                await Promise.all(this.emitter.listeners(event).map(x => x(...args)));
+                resolve();
+            }, timeout);
+        });
     }
 
     on<EventKey extends keyof EventMap = string>(event: EventKey, listener: EventMap[EventKey]): this {
