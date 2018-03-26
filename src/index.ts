@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as minimatch from 'minimatch';
-import { dirname, join as joinPath, resolve as resolvePath } from 'path';
+import { dirname, join as joinPath, resolve as resolvePath, extname } from 'path';
 
 import { isDebug } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, EventNames, WatcherOptions } from './watcher';
@@ -129,7 +129,14 @@ export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     if (!fs.existsSync(parentIndex) && opts.dontCreateIndex) return; 
 
     const entries = fs.readdirSync(parent).filter(x => !x.startsWith('index.'));
-    const content = '// Auto generated\n\n' + entries.map(x => `export * from './${x}';`).join('\n');
+    const content = '// Auto generated\n\n' + entries.map(x => {
+        const ext = extname(x);
+        const codeExt = [ '.js', '.jsx', '.ts', '.tsx', '' ];
+        if (codeExt.includes(ext)) return `export * from './${x}';`;
+        const nameParts = x.split('.');
+        const name = `${nameParts[0]}${nameParts[1].toUpperCase()}`;
+        return  `export const ${name} = require('./${x}');`;
+    }).join('\n');
     fs.writeFileSync(parentIndex, content, 'utf8');
 }
 
