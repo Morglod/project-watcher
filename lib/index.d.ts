@@ -6,6 +6,8 @@ export declare type ProjectWatcherPathOptions = WatcherEvents & {
     autoIndex?: boolean | 'js' | 'ts';
     /** if autoIndex=true, dont create index file if its not exist */
     dontCreateIndex?: boolean;
+    /** pathRule[] */
+    excludeIndex?: string[];
     /** if creating new dir, copy template from this path */
     newDirTemplate?: string;
     /** if creating new file, copy template from this path */
@@ -67,3 +69,4 @@ export declare function copyDir(dst: string, from: string): void;
 export declare function copyFileTemplate(dst: string, from: string): void;
 export declare function copyFile(dst: string, from: string): void;
 export declare function normalizePath(normalizedRootPaths: string[], path: string): string;
+export declare function normalizePathSlash(path: string): string;
