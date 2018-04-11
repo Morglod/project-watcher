@@ -80,11 +80,11 @@ export class ProjectWatcher {
         // update index file
         [ 'newDir', 'renameDir', 'removeDir', 'newFile', 'renameFile', 'removeFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
-                path = normalizePath(rootPath as string[], path);
+                const localPath = takeLocalPath(rootPath as string[], path);
                 this.paths.forEach(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${event}] try match '${path}' with ${rule.pattern}`);
-                    if (rule.match(path)) {
-                        if (isDebug) console.log(`[${event}] matched '${path}' with ${rule.pattern}`);
+                    if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
+                    if (rule.match(localPath)) {
+                        if (isDebug) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (opts.autoIndex) updateIndexFile(path, opts);
                     }
                 });
@@ -94,7 +94,7 @@ export class ProjectWatcher {
         // newDir/newFile template options
         [ 'newDir', 'newFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
-                path = normalizePath(rootPath as string[], path);
+                const localPath = takeLocalPath(rootPath as string[], path);
 
                 // only empty entities
                 const fileStat = fs.statSync(path);
@@ -102,9 +102,9 @@ export class ProjectWatcher {
                 if (fileStat.size !== 0) return;
 
                 this.paths.forEach(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${event}] try match '${path}' with ${rule.pattern}`);
-                    if (rule.match(path)) {
-                        if (isDebug) console.log(`[${event}] matched '${path}' with ${rule.pattern}`);
+                    if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
+                    if (rule.match(localPath)) {
+                        if (isDebug) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
                         if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
                     }
@@ -115,11 +115,12 @@ export class ProjectWatcher {
         // custom event handlers
         EventNames.forEach(eventName => {
             this.watcher.on(eventName, (path: string, ...args: any[]) => {
-                path = normalizePath(rootPath as string[], path);
+                const localPath = takeLocalPath(rootPath as string[], path);
+
                 this.paths.forEach(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${eventName}] try match '${path}' with ${rule.pattern}`);
-                    if (opts[eventName] && rule.match(path)) {
-                        if (isDebug) console.log(`[${eventName}] matched '${path}' with ${rule.pattern}`);
+                    if (isDebug) console.log(`[${eventName}] try match '${localPath}' with ${rule.pattern}`);
+                    if (opts[eventName] && rule.match(localPath)) {
+                        if (isDebug) console.log(`[${eventName}] matched '${localPath}' with ${rule.pattern}`);
                         (opts[eventName] as Function)(path, ...args);
                     }
                 });
@@ -135,14 +136,10 @@ export class ProjectWatcher {
 export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     // TODO: if file exists & no 'auto generated' comment
 
-    console.log('updateIndexFile path=', path);
-
     const parent = dirname(path);
     const ext = opts.autoIndex === 'ts' ? '.ts' : '.js';
     const parentIndex = joinPath(parent, './index' + ext);
     if (!fs.existsSync(parentIndex) && opts.dontCreateIndex) return;
-
-    console.log('updateIndexFile.readdirSync', parent);
 
     const entries = fs.readdirSync(parent).filter(x => {
         if (x.startsWith('index.')) return false;
@@ -189,6 +186,15 @@ export function normalizePath(normalizedRootPaths: string[], path: string): stri
     if (!rootPath) return path;
     if (isDebug) console.log(`normalizePath ${rootPath} ${path}`);
     return path; // path.substr(rootPath.length + 1);
+}
+
+export function takeLocalPath(normalizedRootPaths: string[], path: string): string {
+    path = path.replace(/\\/g, '/').replace(/^\.\//, '');
+    if (isDebug) console.log(`normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
+    const rootPath = normalizedRootPaths.find(x => path.startsWith(x));
+    if (!rootPath) return path;
+    if (isDebug) console.log(`normalizePath ${rootPath} ${path}`);
+    return path.substr(rootPath.length + 1);
 }
 
 export function normalizePathSlash(path: string) {

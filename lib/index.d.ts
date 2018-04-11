@@ -69,4 +69,5 @@ export declare function copyDir(dst: string, from: string): void;
 export declare function copyFileTemplate(dst: string, from: string): void;
 export declare function copyFile(dst: string, from: string): void;
 export declare function normalizePath(normalizedRootPaths: string[], path: string): string;
+export declare function takeLocalPath(normalizedRootPaths: string[], path: string): string;
 export declare function normalizePathSlash(path: string): string;
