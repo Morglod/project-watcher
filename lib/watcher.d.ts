@@ -24,6 +24,8 @@ export declare class Watcher extends EventEmitter<EventMap> {
     private _debugLog;
     debugLog: Function | boolean;
     constructor(path: string | string[], opts?: WatcherOptions);
+    /** stop listening and close fs watcher */
+    dispose: () => void;
     private handleNewDir;
     private handleDirRename;
     private handleRemoveDir;

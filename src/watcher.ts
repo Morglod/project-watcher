@@ -61,6 +61,12 @@ export class Watcher extends EventEmitter<EventMap> {
         this.watcher = chokidar.watch(path, options).on('ready', this.listen);
     }
 
+    /** stop listening and close fs watcher */
+    dispose = () => {
+        this.stopListening();
+        this.watcher.close();
+    }
+
     private handleNewDir = async (path: string) => {
         this.stopListening();
         if (this.debugLog) this._debugLog('handleNewDir');
