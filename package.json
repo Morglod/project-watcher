@@ -1,6 +1,6 @@
 {
   "name": "project-watch",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Watch on project structure",
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
