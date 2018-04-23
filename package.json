@@ -1,7 +1,11 @@
 {
   "name": "project-watcher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Watch on project structure",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Morglod/project-watch"
+  },
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "scripts": {

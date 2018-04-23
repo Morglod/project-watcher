@@ -1,4 +1,4 @@
-# project-watch
+# project-watcher
 
 Currently wip.
 
