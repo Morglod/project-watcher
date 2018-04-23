@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as minimatch from 'minimatch';
 import { dirname, join as joinPath, resolve as resolvePath, extname, basename } from 'path';
 
-import { isDebug } from './env';
+import { isDebug, isDev } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, EventNames, WatcherOptions } from './watcher';
 
 export type ProjectWatcherPathOptions = WatcherEvents & {
@@ -84,7 +84,7 @@ export class ProjectWatcher {
                 this.paths.forEach(({ rule, opts }) => {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
-                        if (isDebug) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
+                        if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (opts.autoIndex) updateIndexFile(path, opts);
                     }
                 });
@@ -104,7 +104,7 @@ export class ProjectWatcher {
                 this.paths.forEach(({ rule, opts }) => {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
-                        if (isDebug) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
+                        if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
                         if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
                     }
@@ -120,7 +120,7 @@ export class ProjectWatcher {
                 this.paths.forEach(({ rule, opts }) => {
                     if (isDebug) console.log(`[${eventName}] try match '${localPath}' with ${rule.pattern}`);
                     if (opts[eventName] && rule.match(localPath)) {
-                        if (isDebug) console.log(`[${eventName}] matched '${localPath}' with ${rule.pattern}`);
+                        if (isDev) console.log(`[${eventName}] matched '${localPath}' with ${rule.pattern}`);
                         (opts[eventName] as Function)(path, ...args);
                     }
                 });
