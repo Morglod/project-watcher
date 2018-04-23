@@ -13,7 +13,7 @@ eg:
 Install
 
 ```
-npm i https://github.com/Morglod/project-watch.git
+npm i project-watch
 ```
 
 Create watcher script

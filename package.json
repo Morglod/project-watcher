@@ -1,5 +1,5 @@
 {
-  "name": "project-watch",
+  "name": "project-watcher",
   "version": "0.1.0",
   "description": "Watch on project structure",
   "types": "lib/index.d.ts",
