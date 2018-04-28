@@ -2,6 +2,10 @@
 import * as minimatch from 'minimatch';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherOptions } from './watcher';
 export declare type ProjectWatcherPathOptions = WatcherEvents & {
+    /** if this path matches, it will stop event propogation (not for custom handlers) */
+    break?: boolean;
+    /** if this path matches, it will stop event propogation for custom handlers */
+    breakCustomEvents?: boolean;
     /** Auto update exports in index file */
     autoIndex?: boolean | 'js' | 'ts';
     /** if autoIndex=true, dont create index file if its not exist */

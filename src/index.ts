@@ -6,6 +6,12 @@ import { isDebug, isDev } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, EventNames, WatcherOptions } from './watcher';
 
 export type ProjectWatcherPathOptions = WatcherEvents & {
+    /** if this path matches, it will stop event propogation (not for custom handlers) */
+    break?: boolean,
+
+    /** if this path matches, it will stop event propogation for custom handlers */
+    breakCustomEvents?: boolean,
+
     /** Auto update exports in index file */
     autoIndex?: boolean|'js'|'ts',
 
@@ -81,12 +87,14 @@ export class ProjectWatcher {
         [ 'newDir', 'renameDir', 'removeDir', 'newFile', 'renameFile', 'removeFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
                 const localPath = takeLocalPath(rootPath as string[], path);
-                this.paths.forEach(({ rule, opts }) => {
+                this.paths.some(({ rule, opts }) => {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
                         if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (opts.autoIndex) updateIndexFile(path, opts);
+                        if (opts.break) return true;
                     }
+                    return false;
                 });
             });
         });
@@ -101,13 +109,15 @@ export class ProjectWatcher {
                 if (fileStat.isDirectory() && fs.readdirSync(path).length !== 0) return;
                 if (fileStat.size !== 0) return;
 
-                this.paths.forEach(({ rule, opts }) => {
+                this.paths.some(({ rule, opts }) => {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
                         if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
                         if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
                         if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
+                        if (opts.break) return true;
                     }
+                    return false;
                 });
             });
         });
@@ -117,12 +127,14 @@ export class ProjectWatcher {
             this.watcher.on(eventName, (path: string, ...args: any[]) => {
                 const localPath = takeLocalPath(rootPath as string[], path);
 
-                this.paths.forEach(({ rule, opts }) => {
+                this.paths.some(({ rule, opts }) => {
                     if (isDebug) console.log(`[${eventName}] try match '${localPath}' with ${rule.pattern}`);
                     if (opts[eventName] && rule.match(localPath)) {
                         if (isDev) console.log(`[${eventName}] matched '${localPath}' with ${rule.pattern}`);
                         (opts[eventName] as Function)(path, ...args);
+                        if (opts.breakCustomEvents) return true;
                     }
+                    return false;
                 });
             });
         });
