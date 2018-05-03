@@ -3,7 +3,7 @@ import * as minimatch from 'minimatch';
 import { dirname, join as joinPath, resolve as resolvePath, extname, basename } from 'path';
 
 import { isDebug, isDev } from './env';
-import { Watcher, WeakEventMap as WatcherEvents, EventNames, WatcherOptions } from './watcher';
+import { Watcher, WeakEventMap as WatcherEvents, WatcherEventNames, WatcherOptions } from './watcher';
 
 export type ProjectWatcherPathOptions = WatcherEvents & {
     /** if this path matches, it will stop event propogation (not for custom handlers) */
@@ -54,10 +54,10 @@ export type ProjectWatcherPathOptions = WatcherEvents & {
      * export default class Input extends React.Component {
      * ```
      */
-    runInlineScripts?: boolean,
+    // runInlineScripts?: boolean,
 
     /** Map or require module (as global variable) for inlined scripts */
-    inlineScriptModules?: string[] | { [moduleName: string]: string },
+    // inlineScriptModules?: string[] | { [moduleName: string]: string },
 }
 
 /** Uses https://github.com/isaacs/minimatch for path rules */
@@ -68,7 +68,11 @@ export type ProjectWatcherOptions = {
     paths: ProjectWatcherPaths,
 }
 
-/** Uses https://github.com/isaacs/minimatch for path rules */
+/**
+ * Core
+ * 
+ * Uses https://github.com/isaacs/minimatch for path rules
+ */
 export class ProjectWatcher {
     readonly watcher: Watcher;
     readonly paths: { rule: minimatch.IMinimatch, opts: ProjectWatcherPathOptions }[];
@@ -123,7 +127,7 @@ export class ProjectWatcher {
         });
 
         // custom event handlers
-        EventNames.forEach(eventName => {
+        WatcherEventNames.forEach(eventName => {
             this.watcher.on(eventName, (path: string, ...args: any[]) => {
                 const localPath = takeLocalPath(rootPath as string[], path);
 

@@ -5,7 +5,7 @@ import * as chokidar from 'chokidar';
 import { EventEmitter } from './event-emitter';
 import { isDebug } from './env';
 
-export type EventMap = {
+export type WatcherEventMap = {
     newDir: (path: string) => any,
     newFile: (path: string) => any,
     renameFile: (oldPath: string, newPath: string) => any,
@@ -15,13 +15,10 @@ export type EventMap = {
     changeFile: (path: string) => any,
 }
 
-export type WeakEventMap = {
-    [event in Events]?: EventMap[event];
-}
+export type WeakEventMap = Partial<WatcherEventMap>;
+export type WatcherEvents = keyof WatcherEventMap;
 
-export type Events = keyof EventMap;
-
-export const EventNames: Events[] = [ 
+export const WatcherEventNames: WatcherEvents[] = [ 
     'newDir',
     'newFile',
     'renameFile',
@@ -33,7 +30,12 @@ export const EventNames: Events[] = [
 
 export type WatcherOptions = chokidar.WatchOptions;
 
-export class Watcher extends EventEmitter<EventMap> {
+/**
+ * FileSystem watcher
+ * 
+ * Use `on`/`once`/`addListener`/`removeListener`.
+ */
+export class Watcher extends EventEmitter<WatcherEventMap> {
     readonly watcher: chokidar.FSWatcher;
 
     eventTimeoutMS: number = 50;

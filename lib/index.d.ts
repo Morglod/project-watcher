@@ -16,38 +16,6 @@ export declare type ProjectWatcherPathOptions = WatcherEvents & {
     newDirTemplate?: string;
     /** if creating new file, copy template from this path */
     newFileTemplate?: string;
-    /**
-     * Runs code from comment on changeFile event.
-     *
-     * Example:
-     * ```js
-     * // project-watch { return fs.readdirSync(__dirname).filter(x => !x.startsWith('index')).join(x => `export * from './${x}';\n`) }
-     * export * from './input';
-     * export * from './smth';
-     * // project-watch:end
-     * ```
-     *
-     * Multiline comments supported too.
-     *
-     * Example with async:
-     * ```js
-     * // project-watch Promise(resolve => { fs.readdir(__dirname, (err, entries) => resolve(entries.filter(x => !x.startsWith('index')).join(x => `export * from './${x}';\n`)) ) }
-     * export * from './input';
-     * export * from './smth';
-     * // project-watch:end
-     * ```
-     *
-     * Next line only scripts:
-     * ```js
-     * // project-watch-line { return `export default class ${path.basename(__filename)} extends React.Component { `; }
-     * export default class Input extends React.Component {
-     * ```
-     */
-    runInlineScripts?: boolean;
-    /** Map or require module (as global variable) for inlined scripts */
-    inlineScriptModules?: string[] | {
-        [moduleName: string]: string;
-    };
 };
 /** Uses https://github.com/isaacs/minimatch for path rules */
 export declare type ProjectWatcherPaths = {
@@ -57,7 +25,11 @@ export declare type ProjectWatcherOptions = {
     watcher?: WatcherOptions;
     paths: ProjectWatcherPaths;
 };
-/** Uses https://github.com/isaacs/minimatch for path rules */
+/**
+ * Core
+ *
+ * Uses https://github.com/isaacs/minimatch for path rules
+ */
 export declare class ProjectWatcher {
     readonly watcher: Watcher;
     readonly paths: {

@@ -1,6 +1,6 @@
 import * as chokidar from 'chokidar';
 import { EventEmitter } from './event-emitter';
-export declare type EventMap = {
+export declare type WatcherEventMap = {
     newDir: (path: string) => any;
     newFile: (path: string) => any;
     renameFile: (oldPath: string, newPath: string) => any;
@@ -9,13 +9,16 @@ export declare type EventMap = {
     removeFile: (path: string) => any;
     changeFile: (path: string) => any;
 };
-export declare type WeakEventMap = {
-    [event in Events]?: EventMap[event];
-};
-export declare type Events = keyof EventMap;
-export declare const EventNames: Events[];
+export declare type WeakEventMap = Partial<WatcherEventMap>;
+export declare type WatcherEvents = keyof WatcherEventMap;
+export declare const WatcherEventNames: WatcherEvents[];
 export declare type WatcherOptions = chokidar.WatchOptions;
-export declare class Watcher extends EventEmitter<EventMap> {
+/**
+ * FileSystem watcher
+ *
+ * Use `on`/`once`/`addListener`/`removeListener`.
+ */
+export declare class Watcher extends EventEmitter<WatcherEventMap> {
     readonly watcher: chokidar.FSWatcher;
     eventTimeoutMS: number;
     renameDirTimeoutMS: number;
