@@ -23,7 +23,7 @@ Create watcher script
 
 ```js
 const path = require('path');
-const { ProjectWatcher } = require('project-watch');
+const { ProjectWatcher } = require('project-watcher');
 
 // project paths
 const projectSource = path.join(__dirname, '../src');
