@@ -5,6 +5,12 @@ import { dirname, join as joinPath, resolve as resolvePath, extname, basename } 
 import { isDebug, isDev } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherEventNames, WatcherOptions } from './watcher';
 
+export const REPLACE_FILE_NAME = '{{FILE_NAME}}';
+
+export type ReplacementMap = {
+    [from: string]: string|((info: { filePath: string, fileName: string, fileExt: string }) => string)
+};
+
 export type ProjectWatcherPathOptions = WatcherEvents & {
     /** if this path matches, it will stop event propogation (not for custom handlers) */
     break?: boolean,
@@ -26,6 +32,9 @@ export type ProjectWatcherPathOptions = WatcherEvents & {
 
     /** if creating new file, copy template from this path */
     newFileTemplate?: string,
+
+    /** for `newDirTemplate` & `newFileTemplate` replace this entries in text */
+    replace?: ReplacementMap,
 
     /**
      * Runs code from comment on changeFile event.
@@ -106,19 +115,26 @@ export class ProjectWatcher {
         // newDir/newFile template options
         [ 'newDir', 'newFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
+                if (isDev) console.log(`[${event}] for '${path}'`);
                 const localPath = takeLocalPath(rootPath as string[], path);
 
                 // only empty entities
                 const fileStat = fs.statSync(path);
-                if (fileStat.isDirectory() && fs.readdirSync(path).length !== 0) return;
-                if (fileStat.size !== 0) return;
+                if (fileStat.isDirectory() && fs.readdirSync(path).length !== 0) {
+                    if (isDev) console.log(`[${event}] for '${path}' fileStat.isDirectory() && fs.readdirSync(path).length !== 0`);
+                    return;
+                }
+                if (fileStat.isFile() && fileStat.size !== 0) {
+                    if (isDev) console.log(`[${event}] for '${path}' fileStat.size !== 0; fileStat.size=${fileStat.size}`);
+                    return;
+                }
 
                 this.paths.some(({ rule, opts }) => {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
                         if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
-                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate);
-                        if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate);
+                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate, opts.replace);
+                        if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate, opts.replace);
                         if (opts.break) return true;
                     }
                     return false;
@@ -173,26 +189,56 @@ export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     fs.writeFileSync(parentIndex, content, 'utf8');
 }
 
-export function copyDirTemplate(dst: string, from: string) {
-    copyDir(dst, from);
+export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap) {
+    if (isDev) console.log(`copyDirTemplate from '${from}' to '${dst}'`);
+    copyDir(dst, from, replacements);
 }
 
-export function copyDir(dst: string, from: string) {
+export function copyDir(dst: string, from: string, replacements?: ReplacementMap) {
+    if (isDev) console.log(`copyDir from '${from}' to '${dst}'`);
     if (!fs.existsSync(dst)) fs.mkdirSync(dst);
 
     const entries = fs.readdirSync(from);
     entries.forEach(x => {
-        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x));
-        else copyFile(joinPath(dst, x), joinPath(from, x));
-    })
+        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), replacements);
+        else copyFile(joinPath(dst, x), joinPath(from, x), replacements);
+    });
 }
 
-export function copyFileTemplate(dst: string, from: string) {
-    fs.copyFileSync(from, dst);
+export function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap) {
+    if (isDev) console.log(`copyFileTemplate from '${from}' to '${dst}'`);
+    copyFile(dst, from, replacements);
 }
 
-export function copyFile(dst: string, from: string) {
-    fs.writeFileSync(dst, fs.readFileSync(from));
+export function copyFile(dst: string, from: string, replacements?: ReplacementMap) {
+    if (isDev) console.log(`copyFile from '${from}' to '${dst}'`);
+    if (replacements) {
+        let fileContent = fs.readFileSync(from, 'utf8');
+        const dstFileExt = extname(dst);
+        const dstFileName = basename(dst, dstFileExt);
+        for (const [ replaceFrom, replaceTo ] of Object.entries(replacements)) {
+            let replaceResult: string;
+
+            if (replaceTo === REPLACE_FILE_NAME) {
+                replaceResult = dstFileName;
+            }
+
+            if (typeof replaceTo === 'function') {
+                replaceResult = replaceTo({
+                    filePath: dst,
+                    fileName: dstFileName,
+                    fileExt: dstFileExt,
+                });
+            } else {
+                replaceResult = replaceTo;
+            }
+
+            fileContent = fileContent.split(replaceFrom).join(replaceResult);
+        }
+        fs.writeFileSync(dst, fileContent);
+    } else {
+        fs.writeFileSync(dst, fs.readFileSync(from));
+    }
 }
 
 export function normalizePath(normalizedRootPaths: string[], path: string): string {
