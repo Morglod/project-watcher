@@ -7,6 +7,7 @@ export declare type ReplacementMap = {
         filePath: string;
         fileName: string;
         fileExt: string;
+        targetDirName: string;
     }) => string);
 };
 export declare type ProjectWatcherPathOptions = WatcherEvents & {
@@ -51,9 +52,9 @@ export declare class ProjectWatcher {
 }
 export declare function updateIndexFile(path: string, opts: ProjectWatcherPathOptions): void;
 export declare function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap): void;
-export declare function copyDir(dst: string, from: string, replacements?: ReplacementMap): void;
+export declare function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap): void;
 export declare function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap): void;
-export declare function copyFile(dst: string, from: string, replacements?: ReplacementMap): void;
+export declare function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap): void;
 export declare function normalizePath(normalizedRootPaths: string[], path: string): string;
 export declare function takeLocalPath(normalizedRootPaths: string[], path: string): string;
 export declare function normalizePathSlash(path: string): string;

@@ -8,7 +8,7 @@ import { Watcher, WeakEventMap as WatcherEvents, WatcherEventNames, WatcherOptio
 export const REPLACE_FILE_NAME = '{{FILE_NAME}}';
 
 export type ReplacementMap = {
-    [from: string]: string|((info: { filePath: string, fileName: string, fileExt: string }) => string)
+    [from: string]: string|((info: { filePath: string, fileName: string, fileExt: string, targetDirName: string }) => string)
 };
 
 export type ProjectWatcherPathOptions = WatcherEvents & {
@@ -191,26 +191,28 @@ export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
 
 export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap) {
     if (isDev) console.log(`copyDirTemplate from '${from}' to '${dst}'`);
-    copyDir(dst, from, replacements);
+    const targetDirName = basename(dst);
+    copyDir(dst, from, targetDirName, replacements);
 }
 
-export function copyDir(dst: string, from: string, replacements?: ReplacementMap) {
+export function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap) {
     if (isDev) console.log(`copyDir from '${from}' to '${dst}'`);
     if (!fs.existsSync(dst)) fs.mkdirSync(dst);
 
     const entries = fs.readdirSync(from);
     entries.forEach(x => {
-        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), replacements);
-        else copyFile(joinPath(dst, x), joinPath(from, x), replacements);
+        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), targetDirName, replacements);
+        else copyFile(joinPath(dst, x), joinPath(from, x), targetDirName, replacements);
     });
 }
 
 export function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap) {
     if (isDev) console.log(`copyFileTemplate from '${from}' to '${dst}'`);
-    copyFile(dst, from, replacements);
+    const targetDirName = basename(dst);
+    copyFile(dst, from, targetDirName, replacements);
 }
 
-export function copyFile(dst: string, from: string, replacements?: ReplacementMap) {
+export function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap) {
     if (isDev) console.log(`copyFile from '${from}' to '${dst}'`);
     if (replacements) {
         let fileContent = fs.readFileSync(from, 'utf8');
@@ -228,6 +230,7 @@ export function copyFile(dst: string, from: string, replacements?: ReplacementMa
                     filePath: dst,
                     fileName: dstFileName,
                     fileExt: dstFileExt,
+                    targetDirName,
                 });
             } else {
                 replaceResult = replaceTo;
