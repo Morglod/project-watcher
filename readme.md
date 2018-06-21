@@ -16,7 +16,7 @@ TypeScript support.
 Install
 
 ```
-npm i project-watch
+npm i project-watcher
 ```
 
 Create watcher script
