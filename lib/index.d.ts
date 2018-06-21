@@ -1,7 +1,6 @@
 /// <reference types="minimatch" />
 import * as minimatch from 'minimatch';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherOptions } from './watcher';
-export declare const REPLACE_FILE_NAME = "{{FILE_NAME}}";
 export declare type ReplacementMap = {
     [from: string]: string | ((info: {
         filePath: string;
@@ -27,6 +26,23 @@ export declare type ProjectWatcherPathOptions = WatcherEvents & {
     newFileTemplate?: string;
     /** for `newDirTemplate` & `newFileTemplate` replace this entries in text */
     replace?: ReplacementMap;
+    /**
+     * for `newDirTemplate` replace fileNames from templates
+     *
+     * eg
+     * When creating dir like 'blocks/myBlock'
+     * And template file copied from 'template/NAME.js'
+     *
+     * with
+     * ```js
+     *  replaceFileName: {
+     *  NAME: ({ targetDirName }) => `${targetDirName}.js`,
+     * }
+     * ```
+     *
+     * File will be copied as 'blocks/myBlock/myBlock.js'
+     */
+    replaceFileName?: ReplacementMap;
 };
 /** Uses https://github.com/isaacs/minimatch for path rules */
 export declare type ProjectWatcherPaths = {
@@ -51,10 +67,10 @@ export declare class ProjectWatcher {
     close: () => void;
 }
 export declare function updateIndexFile(path: string, opts: ProjectWatcherPathOptions): void;
-export declare function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap): void;
-export declare function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap): void;
+export declare function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
+export declare function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
 export declare function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap): void;
-export declare function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap): void;
+export declare function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
 export declare function normalizePath(normalizedRootPaths: string[], path: string): string;
 export declare function takeLocalPath(normalizedRootPaths: string[], path: string): string;
 export declare function normalizePathSlash(path: string): string;

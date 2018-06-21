@@ -5,8 +5,6 @@ import { dirname, join as joinPath, resolve as resolvePath, extname, basename } 
 import { isDebug, isDev } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherEventNames, WatcherOptions } from './watcher';
 
-export const REPLACE_FILE_NAME = '{{FILE_NAME}}';
-
 export type ReplacementMap = {
     [from: string]: string|((info: { filePath: string, fileName: string, fileExt: string, targetDirName: string }) => string)
 };
@@ -35,6 +33,24 @@ export type ProjectWatcherPathOptions = WatcherEvents & {
 
     /** for `newDirTemplate` & `newFileTemplate` replace this entries in text */
     replace?: ReplacementMap,
+
+    /**
+     * for `newDirTemplate` replace fileNames from templates
+     * 
+     * eg
+     * When creating dir like 'blocks/myBlock'  
+     * And template file copied from 'template/NAME.js'  
+     * 
+     * with  
+     * ```js
+     *  replaceFileName: {
+     *  NAME: ({ targetDirName }) => `${targetDirName}.js`,
+     * }
+     * ```
+     * 
+     * File will be copied as 'blocks/myBlock/myBlock.js'
+     */
+    replaceFileName?: ReplacementMap,
 
     /**
      * Runs code from comment on changeFile event.
@@ -133,7 +149,7 @@ export class ProjectWatcher {
                     if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
                         if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
-                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate, opts.replace);
+                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate, opts.replace, opts.replaceFileName);
                         if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate, opts.replace);
                         if (opts.break) return true;
                     }
@@ -189,20 +205,20 @@ export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     fs.writeFileSync(parentIndex, content, 'utf8');
 }
 
-export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap) {
+export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
     if (isDev) console.log(`copyDirTemplate from '${from}' to '${dst}'`);
     const targetDirName = basename(dst);
-    copyDir(dst, from, targetDirName, replacements);
+    copyDir(dst, from, targetDirName, replacements, replaceFileName);
 }
 
-export function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap) {
+export function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
     if (isDev) console.log(`copyDir from '${from}' to '${dst}'`);
     if (!fs.existsSync(dst)) fs.mkdirSync(dst);
 
     const entries = fs.readdirSync(from);
     entries.forEach(x => {
-        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), targetDirName, replacements);
-        else copyFile(joinPath(dst, x), joinPath(from, x), targetDirName, replacements);
+        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName);
+        else copyFile(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName);
     });
 }
 
@@ -212,18 +228,39 @@ export function copyFileTemplate(dst: string, from: string, replacements?: Repla
     copyFile(dst, from, targetDirName, replacements);
 }
 
-export function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap) {
+export function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
     if (isDev) console.log(`copyFile from '${from}' to '${dst}'`);
+    if (replaceFileName) {
+        const dstFileExt = extname(dst);
+        const dstFileName = basename(dst, dstFileExt);
+
+        fnameReplaceLoop: for (const [ replaceFrom, replaceTo ] of Object.entries(replaceFileName)) {
+            if (replaceFrom === dstFileName) {
+                let replaceResult: string;
+    
+                if (typeof replaceTo === 'function') {
+                    replaceResult = replaceTo({
+                        filePath: dst,
+                        fileName: dstFileName,
+                        fileExt: dstFileExt,
+                        targetDirName,
+                    });
+                } else {
+                    replaceResult = replaceTo;
+                }
+
+                dst = joinPath(dirname(dst), replaceResult);
+                break fnameReplaceLoop;
+            }
+        }
+    }
     if (replacements) {
         let fileContent = fs.readFileSync(from, 'utf8');
         const dstFileExt = extname(dst);
         const dstFileName = basename(dst, dstFileExt);
+
         for (const [ replaceFrom, replaceTo ] of Object.entries(replacements)) {
             let replaceResult: string;
-
-            if (replaceTo === REPLACE_FILE_NAME) {
-                replaceResult = dstFileName;
-            }
 
             if (typeof replaceTo === 'function') {
                 replaceResult = replaceTo({
