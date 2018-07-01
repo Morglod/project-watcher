@@ -4,6 +4,7 @@ import { dirname, join as joinPath, resolve as resolvePath, extname, basename } 
 
 import { isDebug, isDev } from './env';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherEventNames, WatcherOptions } from './watcher';
+import { ILogger, DefaultLogger, LogLevel } from './logger';
 
 export type ReplacementMap = {
     [from: string]: string|((info: { filePath: string, fileName: string, fileExt: string, targetDirName: string }) => string)
@@ -101,8 +102,11 @@ export type ProjectWatcherOptions = {
 export class ProjectWatcher {
     readonly watcher: Watcher;
     readonly paths: { rule: minimatch.IMinimatch, opts: ProjectWatcherPathOptions }[];
+    readonly logger: ILogger;
 
-    constructor(rootPath: string | string[], opts: ProjectWatcherOptions) {
+    constructor(rootPath: string | string[], opts: ProjectWatcherOptions, logger: ILogger = DefaultLogger.instance) {
+        this.logger = logger;
+    
         this.paths = Object.entries(opts.paths).map(([ ruleStr, pathOpts ]) => ({
             rule: new minimatch.Minimatch(ruleStr),
             opts: pathOpts
@@ -115,12 +119,12 @@ export class ProjectWatcher {
         // update index file
         [ 'newDir', 'renameDir', 'removeDir', 'newFile', 'renameFile', 'removeFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
-                const localPath = takeLocalPath(rootPath as string[], path);
+                const localPath = takeLocalPath(rootPath as string[], path, this.logger);
                 this.paths.some(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
+                    this.logger.log(LogLevel.log, `[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
-                        if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
-                        if (opts.autoIndex) updateIndexFile(path, opts);
+                        this.logger.log(LogLevel.log, `[${event}] matched '${localPath}' with ${rule.pattern}`);
+                        if (opts.autoIndex) updateIndexFile(path, opts, logger);
                         if (opts.break) return true;
                     }
                     return false;
@@ -131,26 +135,26 @@ export class ProjectWatcher {
         // newDir/newFile template options
         [ 'newDir', 'newFile' ].forEach((event: any) => {
             this.watcher.on(event, (path: string) => {
-                if (isDev) console.log(`[${event}] for '${path}'`);
-                const localPath = takeLocalPath(rootPath as string[], path);
+                this.logger.log(LogLevel.log, `[${event}] for '${path}'`);
+                const localPath = takeLocalPath(rootPath as string[], path, this.logger);
 
                 // only empty entities
                 const fileStat = fs.statSync(path);
                 if (fileStat.isDirectory() && fs.readdirSync(path).length !== 0) {
-                    if (isDev) console.log(`[${event}] for '${path}' fileStat.isDirectory() && fs.readdirSync(path).length !== 0`);
+                    this.logger.log(LogLevel.log, `[${event}] for '${path}' fileStat.isDirectory() && fs.readdirSync(path).length !== 0`);
                     return;
                 }
                 if (fileStat.isFile() && fileStat.size !== 0) {
-                    if (isDev) console.log(`[${event}] for '${path}' fileStat.size !== 0; fileStat.size=${fileStat.size}`);
+                    this.logger.log(LogLevel.log, `[${event}] for '${path}' fileStat.size !== 0; fileStat.size=${fileStat.size}`);
                     return;
                 }
 
                 this.paths.some(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${event}] try match '${localPath}' with ${rule.pattern}`);
+                    this.logger.log(LogLevel.log, `[${event}] try match '${localPath}' with ${rule.pattern}`);
                     if (rule.match(localPath)) {
-                        if (isDev) console.log(`[${event}] matched '${localPath}' with ${rule.pattern}`);
-                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate, opts.replace, opts.replaceFileName);
-                        if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate, opts.replace);
+                        this.logger.log(LogLevel.log, `[${event}] matched '${localPath}' with ${rule.pattern}`);
+                        if (event === 'newDir' && opts.newDirTemplate) copyDirTemplate(path, opts.newDirTemplate, opts.replace, opts.replaceFileName, this.logger);
+                        if (event === 'newFile' && opts.newFileTemplate) copyFileTemplate(path, opts.newFileTemplate, opts.replace, this.logger);
                         if (opts.break) return true;
                     }
                     return false;
@@ -161,12 +165,12 @@ export class ProjectWatcher {
         // custom event handlers
         WatcherEventNames.forEach(eventName => {
             this.watcher.on(eventName, (path: string, ...args: any[]) => {
-                const localPath = takeLocalPath(rootPath as string[], path);
+                const localPath = takeLocalPath(rootPath as string[], path, this.logger);
 
                 this.paths.some(({ rule, opts }) => {
-                    if (isDebug) console.log(`[${eventName}] try match '${localPath}' with ${rule.pattern}`);
+                    this.logger.log(LogLevel.log, `[${eventName}] try match '${localPath}' with ${rule.pattern}`);
                     if (opts[eventName] && rule.match(localPath)) {
-                        if (isDev) console.log(`[${eventName}] matched '${localPath}' with ${rule.pattern}`);
+                        this.logger.log(LogLevel.log, `[${eventName}] matched '${localPath}' with ${rule.pattern}`);
                         (opts[eventName] as Function)(path, ...args);
                         if (opts.breakCustomEvents) return true;
                     }
@@ -181,7 +185,7 @@ export class ProjectWatcher {
     }
 }
 
-export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
+export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions, logger?: ILogger) {
     // TODO: if file exists & no 'auto generated' comment
 
     const parent = dirname(path);
@@ -205,31 +209,31 @@ export function updateIndexFile(path: string, opts: ProjectWatcherPathOptions) {
     fs.writeFileSync(parentIndex, content, 'utf8');
 }
 
-export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
-    if (isDev) console.log(`copyDirTemplate from '${from}' to '${dst}'`);
+export function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger) {
+    if (logger) logger.log(LogLevel.log, `copyDirTemplate from '${from}' to '${dst}'`);
     const targetDirName = basename(dst);
-    copyDir(dst, from, targetDirName, replacements, replaceFileName);
+    copyDir(dst, from, targetDirName, replacements, replaceFileName, logger);
 }
 
-export function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
-    if (isDev) console.log(`copyDir from '${from}' to '${dst}'`);
+export function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger) {
+    if (logger) logger.log(LogLevel.log, `copyDir from '${from}' to '${dst}'`);
     if (!fs.existsSync(dst)) fs.mkdirSync(dst);
 
     const entries = fs.readdirSync(from);
     entries.forEach(x => {
-        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName);
-        else copyFile(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName);
+        if (fs.statSync(joinPath(from, x)).isDirectory()) copyDir(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName, logger);
+        else copyFile(joinPath(dst, x), joinPath(from, x), targetDirName, replacements, replaceFileName, logger);
     });
 }
 
-export function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap) {
-    if (isDev) console.log(`copyFileTemplate from '${from}' to '${dst}'`);
+export function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap, logger?: ILogger) {
+    if (logger) logger.log(LogLevel.log, `copyFileTemplate from '${from}' to '${dst}'`);
     const targetDirName = basename(dst);
-    copyFile(dst, from, targetDirName, replacements);
+    copyFile(dst, from, targetDirName, replacements, undefined, logger);
 }
 
-export function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap) {
-    if (isDev) console.log(`copyFile from '${from}' to '${dst}'`);
+export function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger) {
+    if (logger) logger.log(LogLevel.log, `copyFile from '${from}' to '${dst}'`);
     if (replaceFileName) {
         const dstFileExt = extname(dst);
         const dstFileName = basename(dst, dstFileExt);
@@ -281,21 +285,21 @@ export function copyFile(dst: string, from: string, targetDirName: string, repla
     }
 }
 
-export function normalizePath(normalizedRootPaths: string[], path: string): string {
+export function normalizePath(normalizedRootPaths: string[], path: string, logger?: ILogger): string {
     path = path.replace(/\\/g, '/').replace(/^\.\//, '');
-    if (isDebug) console.log(`normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
+    if (logger) logger.log(LogLevel.log, `normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
     const rootPath = normalizedRootPaths.find(x => path.startsWith(x));
     if (!rootPath) return path;
-    if (isDebug) console.log(`normalizePath ${rootPath} ${path}`);
+    if (logger) logger.log(LogLevel.log, `normalizePath ${rootPath} ${path}`);
     return path; // path.substr(rootPath.length + 1);
 }
 
-export function takeLocalPath(normalizedRootPaths: string[], path: string): string {
+export function takeLocalPath(normalizedRootPaths: string[], path: string, logger?: ILogger): string {
     path = path.replace(/\\/g, '/').replace(/^\.\//, '');
-    if (isDebug) console.log(`normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
+    if (logger) logger.log(LogLevel.log, `normalizePath [${normalizedRootPaths.join(', ')}] ${path}`);
     const rootPath = normalizedRootPaths.find(x => path.startsWith(x));
     if (!rootPath) return path;
-    if (isDebug) console.log(`normalizePath ${rootPath} ${path}`);
+    if (logger) logger.log(LogLevel.log, `normalizePath ${rootPath} ${path}`);
     return path.substr(rootPath.length + 1);
 }
 

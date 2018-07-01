@@ -4,6 +4,7 @@ import * as chokidar from 'chokidar';
 
 import { EventEmitter } from './event-emitter';
 import { isDebug } from './env';
+import { ILogger, DefaultLogger, LogLevel } from './logger';
 
 export type WatcherEventMap = {
     newDir: (path: string) => any,
@@ -43,16 +44,15 @@ export class Watcher extends EventEmitter<WatcherEventMap> {
     renameFileTimeoutMS: number = 50;
     setupIterationTimeoutMS: number = 100;
 
-    private _debugLog: any = false;
-    get debugLog() { return  this._debugLog; }
-    set debugLog(value: Function|boolean) {
-        if (value === true) value = (...args: any[]) => console.log(...args);
-        this._debugLog = value;
-    }
+    readonly logger: ILogger;
 
-    constructor(path: string | string[], opts?: WatcherOptions) {
+    constructor(
+        path: string | string[],
+        opts?: WatcherOptions, 
+        logger: ILogger = DefaultLogger.instance
+    ) {
         super();
-        this.debugLog = isDebug;
+        this.logger = logger;
 
         const options = {
             persistent: true,
@@ -71,28 +71,28 @@ export class Watcher extends EventEmitter<WatcherEventMap> {
 
     private handleNewDir = async (path: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleNewDir');
+        this.logger.log(LogLevel.log, 'handleNewDir');
         await this.emitWait(this.eventTimeoutMS, 'newDir', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleDirRename = async (oldPath: string, newPath: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleDirRename');
+        this.logger.log(LogLevel.log, 'handleDirRename');
         await this.emitWait(this.eventTimeoutMS, 'renameDir', oldPath, newPath);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleRemoveDir = async (path: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleRemoveDir');
+        this.logger.log(LogLevel.log, 'handleRemoveDir');
         await this.emitWait(this.eventTimeoutMS, 'removeDir', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleUnlinkDir = async (unlinkPath: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleUnlinkDir');
+        this.logger.log(LogLevel.log, 'handleUnlinkDir');
         this.watcher.addListener('addDir', (newPath: string) => {
             clearTimeout(timer);
             this.handleDirRename(unlinkPath, newPath);
@@ -106,28 +106,28 @@ export class Watcher extends EventEmitter<WatcherEventMap> {
 
     private handleFileChange = async (path: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleFileChange');
+        this.logger.log(LogLevel.log, 'handleFileChange');
         await this.emitWait(this.eventTimeoutMS, 'changeFile', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private handleFileRename = async (oldPath: string, newPath: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('renameFile');
+        this.logger.log(LogLevel.log, 'renameFile');
         await this.emitWait(this.eventTimeoutMS, 'renameFile', oldPath, newPath);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
     
     private handleNewFile = (addPath: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleNewFile');
+        this.logger.log(LogLevel.log, 'handleNewFile');
         this.watcher.addListener('unlink', (oldPath) => {
             clearTimeout(timer);
             this.handleFileRename(oldPath, addPath);
         });
     
         const timer = setTimeout(async () => {
-            if (this.debugLog) this._debugLog('emit newFile, cancel handleFileRename');
+            this.logger.log(LogLevel.log, 'emit newFile, cancel handleFileRename');
             this.stopListening();
             await this.emitWait(this.eventTimeoutMS, 'newFile', addPath);
             setTimeout(this.listen, this.setupIterationTimeoutMS);
@@ -136,13 +136,13 @@ export class Watcher extends EventEmitter<WatcherEventMap> {
 
     private handleFileRemove = async (path: string) => {
         this.stopListening();
-        if (this.debugLog) this._debugLog('handleFileRemove');
+        this.logger.log(LogLevel.log, 'handleFileRemove');
         await this.emitWait(this.eventTimeoutMS, 'removeFile', path);
         setTimeout(this.listen, this.setupIterationTimeoutMS);
     }
 
     private listen = () => {
-        if (this.debugLog) this._debugLog('setup');
+        this.logger.log(LogLevel.log, 'setup listen events');
         this.stopListening();
         this.watcher.addListener('addDir', this.handleNewDir);
         this.watcher.addListener('change', this.handleFileChange);
