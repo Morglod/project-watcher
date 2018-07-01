@@ -1,6 +1,6 @@
 {
   "name": "project-watcher",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Watch on project structure",
   "repository": {
     "type": "git",
