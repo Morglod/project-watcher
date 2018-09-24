@@ -168,7 +168,7 @@ type ReplacementMap = {
 }
 ```
 
-'from' is matching filenames in templates directory (when populating new directory with template code).
+'from' is matching fully filenames in templates directory, without extensions (when populating new directory with template code).
 
 #### Example
 
