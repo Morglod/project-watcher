@@ -1,6 +1,6 @@
-/// <reference types="minimatch" />
 import * as minimatch from 'minimatch';
 import { Watcher, WeakEventMap as WatcherEvents, WatcherOptions } from './watcher';
+import { ILogger } from './logger';
 export declare type ReplacementMap = {
     [from: string]: string | ((info: {
         filePath: string;
@@ -63,14 +63,15 @@ export declare class ProjectWatcher {
         rule: minimatch.IMinimatch;
         opts: ProjectWatcherPathOptions;
     }[];
-    constructor(rootPath: string | string[], opts: ProjectWatcherOptions);
+    readonly logger: ILogger;
+    constructor(rootPath: string | string[], opts: ProjectWatcherOptions, logger?: ILogger);
     close: () => void;
 }
-export declare function updateIndexFile(path: string, opts: ProjectWatcherPathOptions): void;
-export declare function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
-export declare function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
-export declare function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap): void;
-export declare function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap): void;
-export declare function normalizePath(normalizedRootPaths: string[], path: string): string;
-export declare function takeLocalPath(normalizedRootPaths: string[], path: string): string;
+export declare function updateIndexFile(path: string, opts: ProjectWatcherPathOptions, logger?: ILogger): void;
+export declare function copyDirTemplate(dst: string, from: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger): void;
+export declare function copyDir(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger): void;
+export declare function copyFileTemplate(dst: string, from: string, replacements?: ReplacementMap, logger?: ILogger): void;
+export declare function copyFile(dst: string, from: string, targetDirName: string, replacements?: ReplacementMap, replaceFileName?: ReplacementMap, logger?: ILogger): void;
+export declare function normalizePath(normalizedRootPaths: string[], path: string, logger?: ILogger): string;
+export declare function takeLocalPath(normalizedRootPaths: string[], path: string, logger?: ILogger): string;
 export declare function normalizePathSlash(path: string): string;

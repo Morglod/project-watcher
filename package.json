@@ -1,6 +1,6 @@
 {
   "name": "project-watcher",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Watch on project structure",
   "repository": {
     "type": "git",
@@ -29,11 +29,11 @@
   "author": "morglod",
   "license": "MIT",
   "dependencies": {
-    "@types/chokidar": "^1.7.5",
-    "@types/minimatch": "^3.0.3",
-    "@types/node": "^9.4.7",
-    "chokidar": "^2.0.2",
-    "minimatch": "^3.0.4",
-    "typescript": "^2.7.2"
+    "@types/chokidar": "1.7.5",
+    "@types/minimatch": "3.0.3",
+    "@types/node": "9.4.7",
+    "chokidar": "2.0.4",
+    "minimatch": "3.0.4",
+    "typescript": "2.7.2"
   }
 }

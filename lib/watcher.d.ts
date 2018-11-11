@@ -1,5 +1,6 @@
 import * as chokidar from 'chokidar';
 import { EventEmitter } from './event-emitter';
+import { ILogger } from './logger';
 export declare type WatcherEventMap = {
     newDir: (path: string) => any;
     newFile: (path: string) => any;
@@ -24,9 +25,8 @@ export declare class Watcher extends EventEmitter<WatcherEventMap> {
     renameDirTimeoutMS: number;
     renameFileTimeoutMS: number;
     setupIterationTimeoutMS: number;
-    private _debugLog;
-    debugLog: Function | boolean;
-    constructor(path: string | string[], opts?: WatcherOptions);
+    readonly logger: ILogger;
+    constructor(path: string | string[], opts?: WatcherOptions, logger?: ILogger);
     /** stop listening and close fs watcher */
     dispose: () => void;
     private handleNewDir;
